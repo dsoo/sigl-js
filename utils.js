@@ -22,19 +22,11 @@ function getShader(context, url) {
     async: false,
     dataType: 'text'
   })
-  //var shaderScript = document.getElementById(id);
+
   if (!str) {
     console.log('No script!');
     return null;
   }
-
-  //var k = shaderScript.firstChild;
-  //while (k) {
-  //  if (k.nodeType == 3) {
-  //    str += k.textContent;
-  //  }
-  //  k = k.nextSibling;
-  //}
 
   var vertex_re = /.+\.vert$/
   var frag_re = /.+\.frag$/
