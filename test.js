@@ -95,7 +95,6 @@ function initBuffers(renderer) {
   vertexIndexBuffer.init(vertexIndices, 1);
 }
 
-
 function degToRad(degrees) {
   return degrees * Math.PI / 180;
 }
@@ -111,21 +110,17 @@ function drawScene(renderer) {
   var mvMatrix = mat4.create();
   var pMatrix = mat4.create();
 
-  context.viewport(0, 0, context.viewportWidth, context.viewportHeight);
-  context.clear(context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT);
-
+  renderer.updateViewport();
 
   // Bind vertex buffers
-  shader_program.bindVertexBuffer('vertexPositionAttribute', vertexPositionBuffer);
-  shader_program.bindVertexBuffer('textureCoordAttribute', vertexTexCoordBuffer);
+  shader_program.bindVertexBuffer('aPosition', vertexPositionBuffer);
+  shader_program.bindVertexBuffer('aTexCoord', vertexTexCoordBuffer);
 
   // Bind index buffers
   renderer.bindVIBuffer(vertexIndexBuffer);
 
-
   // Set up texture
-  context.activeTexture(context.TEXTURE0);
-  context.bindTexture(context.TEXTURE_2D, renderer.texture.glTexture);
+  renderer.bindTexture(renderer.texture, 0)
 
 
   // Update shader parameters
@@ -139,7 +134,11 @@ function drawScene(renderer) {
   mat4.rotate(mvMatrix, degToRad(yRot), [0, 1, 0]);
   mat4.rotate(mvMatrix, degToRad(zRot), [0, 0, 1]);
 
-  shader_program.update(pMatrix, mvMatrix);
+  shader_program.updateUniforms({
+    'uSampler': 0,
+    'uMVMatrix': mvMatrix,
+    'uPMatrix': pMatrix
+  })
 
   context.drawElements(context.TRIANGLES, vertexIndexBuffer.glIndexBuffer.numItems, context.UNSIGNED_SHORT, 0);
 }
@@ -166,8 +165,11 @@ function updateAndDraw(renderer) {
 
 function tick(renderer) {
   requestAnimFrame(function() {
-    tick(renderer);
+    //setTimeout(function() {
+      tick(renderer);
+    //}, 1000);
   })
+  //console.log('drawing')
   updateAndDraw(renderer);
 }
 

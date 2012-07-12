@@ -61,21 +61,73 @@
     }
   }
 
+  var Shader = function(context) {
+    this.glContext = context;
+    this.glShader;
+
+    // These should be set by parsing them out of the shader
+    // but can be set by hand first
+    this.uniforms = {}; // name : type
+    this.vertexAttributes = [];
+
+    this.init = function(url) {
+      var shader = getShader(context, url);
+      this.glShader = shader;
+    }
+
+    this.vertexAttribSetup = function(program) {
+      var context = this.glContext;
+      this.vertexAttributes.forEach(function(attribute) {
+        program.enableVertexAttribute(attribute);
+      })
+    }
+
+    this.uniformSetup = function(program) {
+      var context = this.glContext;
+      for (uniform in this.uniforms) {
+        program.setupUniform(uniform, this.uniforms[uniform]);
+      }
+    }
+
+    this.setupProgram = function(program) {
+      this.vertexAttribSetup(program);
+      this.uniformSetup(program);
+    }
+  }
+
   var ShaderProgram = function(context) {
+    // FIXME: uniforms and vertex attributes should be in a member variable
+    // instead of dumped directly onto the object.
     this.glContext = context;
     this.glProgram = undefined;
+    this.vertexAttributes = {};
+    this.uniformTypes = {};
+    this.uniforms = {};
 
-    this.init = function() {
-      console.log('Initializing shaders');
+    this.init = function(url) {
       var program;
       var context = this.glContext;
-
-      var fragmentShader = getShader(context, "test.frag");
-      var vertexShader = getShader(context, "test.vert");
-
       program = context.createProgram();
-      context.attachShader(program, vertexShader);
-      context.attachShader(program, fragmentShader);
+      this.glProgram = program;
+
+
+      var fragment_shader = new Shader(context);
+      fragment_shader.init("test.frag");
+      fragment_shader.uniforms = {
+        'uSampler': '1i'
+        };
+
+      var vertex_shader = new Shader(context);
+      vertex_shader.init("test.vert");
+      vertex_shader.vertexAttributes = ['aPosition', 'aTexCoord'];
+      vertex_shader.uniforms = {
+        'uMVMatrix': 'Matrix4fv',
+        'uPMatrix': 'Matrix4fv'
+        };
+
+
+      context.attachShader(program, vertex_shader.glShader);
+      context.attachShader(program, fragment_shader.glShader);
       context.linkProgram(program);
 
       if (!context.getProgramParameter(program, context.LINK_STATUS)) {
@@ -85,35 +137,49 @@
       context.useProgram(program);
 
       // TODO:
+      // Shaders should be automatically parsed, and attributes should automatically be set up.
       // Parse shader and automatically add attribute variables to
       // And enable attribute arrays
       // javascript program object.
+      vertex_shader.setupProgram(this);
+      fragment_shader.setupProgram(this);
 
-      program.vertexPositionAttribute = context.getAttribLocation(program, "aVertexPosition");
-      context.enableVertexAttribArray(program.vertexPositionAttribute);
+    }
 
-      program.textureCoordAttribute = context.getAttribLocation(program, "aTextureCoord");
-      context.enableVertexAttribArray(program.textureCoordAttribute);
+    this.enableVertexAttribute = function(attribute) {
+      var context = this.glContext;
+      var va = context.getAttribLocation(this.glProgram, attribute);
+      this.vertexAttributes[attribute] = va;
+      context.enableVertexAttribArray(va);
+    }
 
-      program.pMatrixUniform = context.getUniformLocation(program, "uPMatrix");
-      program.mvMatrixUniform = context.getUniformLocation(program, "uMVMatrix");
-      program.samplerUniform = context.getUniformLocation(program, "uSampler");
-
-      this.glProgram = program;
+    this.setupUniform = function(uniform, uniform_type) {
+      this.uniforms[uniform] = context.getUniformLocation(this.glProgram, uniform);
+      this.uniformTypes[uniform] = uniform_type;
     }
 
     // FIXME: This is really a property of the context, not the shader.
     this.bindVertexBuffer = function(attrib_name, buffer) {
       var context = this.glContext;
       context.bindBuffer(context.ARRAY_BUFFER, buffer.glBuffer);
-      context.vertexAttribPointer(this.glProgram[attrib_name], buffer.glBuffer.itemSize, context.FLOAT, false, 0, 0);
+      context.vertexAttribPointer(this.vertexAttributes[attrib_name], buffer.glBuffer.itemSize, context.FLOAT, false, 0, 0);
     }
 
-    this.update = function(pMatrix, mvMatrix) {
+    this.updateUniforms = function(uniform_values) {
       var context = this.glContext;
-      context.uniform1i(this.glProgram.samplerUniform, 0);
-      context.uniformMatrix4fv(this.glProgram.pMatrixUniform, false, pMatrix);
-      context.uniformMatrix4fv(this.glProgram.mvMatrixUniform, false, mvMatrix);
+      for (uniform in this.uniforms) {
+        // FIXME: Understand the 'false' parameter
+        // Do this based on the types of uniforms
+        var uniform_type = this.uniformTypes[uniform];
+        var func_name = 'uniform' + uniform_type;
+        //console.log(uniform, func_name, uniform_values[uniform])
+        // FIXME: Understand the different uniform types
+        if (uniform_type === '1i') {
+          context[func_name](this.uniforms[uniform], uniform_values[uniform])
+        } else {
+          context[func_name](this.uniforms[uniform], false, uniform_values[uniform])
+        }
+      }
     }
   }
   window.SIGL.ShaderProgram = ShaderProgram;
@@ -129,6 +195,12 @@
     this.shaderProgram = undefined;
     this.texture = undefined;
 
+    this.updateViewport = function() {
+      var context = this.context;
+      context.viewport(0, 0, context.viewportWidth, context.viewportHeight);
+      context.clear(context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT);
+    }
+
     this.createVertexBuffer = function() {
       return new VertexBuffer(context);
     }
@@ -139,6 +211,12 @@
 
     this.bindVIBuffer = function(buffer) {
       this.context.bindBuffer(context.ELEMENT_ARRAY_BUFFER, buffer.glIndexBuffer);
+    }
+
+    this.bindTexture = function(texture, index) {
+      // FIXME: This should take into account the texture's actual properties
+      this.context.activeTexture(context['TEXTURE'+index]);
+      this.context.bindTexture(context.TEXTURE_2D, texture.glTexture);
     }
 
     this.initTexture = function() {
