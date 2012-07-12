@@ -1,6 +1,8 @@
-var vertexPositionBuffer;
-var vertexTexCoordBuffer;
-var vertexIndexBuffer;
+var vertex_position_buffer;
+var vertex_tex_coord_buffer;
+var vertex_index_buffer;
+var shader_program;
+var texture;
 
 function initBuffers(renderer) {
   vertices = [
@@ -40,10 +42,10 @@ function initBuffers(renderer) {
     -1.0,  1.0,  1.0,
     -1.0,  1.0, -1.0,
   ];
-  vertexPositionBuffer = renderer.createVertexBuffer();
-  vertexPositionBuffer.init(vertices, 3);
+  vertex_position_buffer = renderer.createVertexBuffer();
+  vertex_position_buffer.init(vertices, 3);
 
-  var textureCoords = [
+  var tex_coords = [
     // Front face
     0.0, 0.0,
     1.0, 0.0,
@@ -80,10 +82,10 @@ function initBuffers(renderer) {
     1.0, 1.0,
     0.0, 1.0,
   ];
-  vertexTexCoordBuffer = renderer.createVertexBuffer();
-  vertexTexCoordBuffer.init(textureCoords, 2);
+  vertex_tex_coord_buffer = renderer.createVertexBuffer();
+  vertex_tex_coord_buffer.init(tex_coords, 2);
 
-  var vertexIndices = [
+  var vertex_indices = [
     0, 1, 2,      0, 2, 3,    // Front face
     4, 5, 6,      4, 6, 7,    // Back face
     8, 9, 10,     8, 10, 11,  // Top face
@@ -91,8 +93,19 @@ function initBuffers(renderer) {
     16, 17, 18,   16, 18, 19, // Right face
     20, 21, 22,   20, 22, 23  // Left face
   ];
-  vertexIndexBuffer = renderer.createVertexIndexBuffer();
-  vertexIndexBuffer.init(vertexIndices, 1);
+  vertex_index_buffer = renderer.createVertexIndexBuffer();
+
+  vertex_index_buffer.init(vertex_indices, 1);
+}
+
+function initShaders(renderer) {
+  shader_program = renderer.createShaderProgram();
+  shader_program.init();
+}
+
+function initTexture(renderer) {
+  texture = renderer.createTexture();
+  texture.init();
 }
 
 function degToRad(degrees) {
@@ -104,8 +117,7 @@ var yRot = 0;
 var zRot = 0;
 
 function drawScene(renderer) {
-  var context = renderer.context;
-  var shader_program = renderer.shaderProgram;
+  var context = renderer.glContext;
 
   var mvMatrix = mat4.create();
   var pMatrix = mat4.create();
@@ -113,14 +125,14 @@ function drawScene(renderer) {
   renderer.updateViewport();
 
   // Bind vertex buffers
-  shader_program.bindVertexBuffer('aPosition', vertexPositionBuffer);
-  shader_program.bindVertexBuffer('aTexCoord', vertexTexCoordBuffer);
+  shader_program.bindVertexBuffer('aPosition', vertex_position_buffer);
+  shader_program.bindVertexBuffer('aTexCoord', vertex_tex_coord_buffer);
 
   // Bind index buffers
-  renderer.bindVIBuffer(vertexIndexBuffer);
+  renderer.bindVIBuffer(vertex_index_buffer);
 
   // Set up texture
-  renderer.bindTexture(renderer.texture, 0)
+  renderer.bindTexture(texture, 0)
 
 
   // Update shader parameters
@@ -140,7 +152,7 @@ function drawScene(renderer) {
     'uPMatrix': pMatrix
   })
 
-  context.drawElements(context.TRIANGLES, vertexIndexBuffer.glIndexBuffer.numItems, context.UNSIGNED_SHORT, 0);
+  context.drawElements(context.TRIANGLES, vertex_index_buffer.glIndexBuffer.numItems, context.UNSIGNED_SHORT, 0);
 }
 
 
@@ -180,14 +192,26 @@ $(document).ready(function() {
   var canvas = document.getElementById("webgl-canvas");
   canvas.width = document.width;
   canvas.height = document.height;
-  var context = initGL(canvas);
+
+  var context;
+
+  try {
+    context = canvas.getContext("experimental-webgl");
+    context.viewportWidth = canvas.width;
+    context.viewportHeight = canvas.height;
+  } catch (e) {
+  }
+  
+  if (!context) {
+    alert("Could not initialise WebGL, sorry :-(");
+  }
+
 
   var renderer = new SIGL.Renderer(context);
 
-  renderer.initShaders();
-
+  initShaders(renderer);
   initBuffers(renderer);
-  renderer.initTexture();
+  initTexture(renderer);
 
   context.clearColor(0.0, 0.0, 0.0, 1.0);
   context.enable(context.DEPTH_TEST);

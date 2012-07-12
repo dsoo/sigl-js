@@ -70,9 +70,44 @@
     this.uniforms = {}; // name : type
     this.vertexAttributes = [];
 
-    this.init = function(url) {
-      var shader = getShader(context, url);
+    this.initURL = function(url) {
+      var str;
+      $.ajax({
+        url: url,
+        success: function(data) {
+          str = data;
+        },
+        async: false,
+        dataType: 'text'
+      })
+
+      if (!str) {
+        console.log('No script!');
+        return null;
+      }
+
+      var vertex_re = /.+\.vert$/
+      var frag_re = /.+\.frag$/
+
+      if (url.match(frag_re)) {
+        this.init(str, this.glContext.FRAGMENT_SHADER);
+      } else if (url.match(vertex_re)) {
+        this.init(str, this.glContext.VERTEX_SHADER);
+      } else {
+        // FIXME: We're hosed, error appropriately.
+      }
+    }
+
+    this.init = function(shader_text, shader_type) {
+      var shader = context.createShader(shader_type);
       this.glShader = shader;
+
+      context.shaderSource(shader, shader_text);
+      context.compileShader(shader);
+
+      if (!context.getShaderParameter(shader, context.COMPILE_STATUS)) {
+        alert(this.glContext.getShaderInfoLog(shader));
+      }
     }
 
     this.vertexAttribSetup = function(program) {
@@ -112,13 +147,13 @@
 
 
       var fragment_shader = new Shader(context);
-      fragment_shader.init("test.frag");
+      fragment_shader.initURL("test.frag");
       fragment_shader.uniforms = {
         'uSampler': '1i'
         };
 
       var vertex_shader = new Shader(context);
-      vertex_shader.init("test.vert");
+      vertex_shader.initURL("test.vert");
       vertex_shader.vertexAttributes = ['aPosition', 'aTexCoord'];
       vertex_shader.uniforms = {
         'uMVMatrix': 'Matrix4fv',
@@ -191,42 +226,39 @@
     // All shaders associated with the context
     // All textures associated with the context
 
-    this.context = context;
-    this.shaderProgram = undefined;
+    this.glContext = context;
     this.texture = undefined;
 
     this.updateViewport = function() {
-      var context = this.context;
+      var context = this.glContext;
       context.viewport(0, 0, context.viewportWidth, context.viewportHeight);
       context.clear(context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT);
     }
 
     this.createVertexBuffer = function() {
-      return new VertexBuffer(context);
+      return new VertexBuffer(this.glContext);
     }
 
     this.createVertexIndexBuffer = function() {
-      return new VertexIndexBuffer(context);
+      return new VertexIndexBuffer(this.glContext);
+    }
+
+    this.createShaderProgram = function() {
+      return new ShaderProgram(this.glContext);
+    }
+
+    this.createTexture = function() {
+      return new Texture(this.glContext);
     }
 
     this.bindVIBuffer = function(buffer) {
-      this.context.bindBuffer(context.ELEMENT_ARRAY_BUFFER, buffer.glIndexBuffer);
+      this.glContext.bindBuffer(context.ELEMENT_ARRAY_BUFFER, buffer.glIndexBuffer);
     }
 
     this.bindTexture = function(texture, index) {
       // FIXME: This should take into account the texture's actual properties
-      this.context.activeTexture(context['TEXTURE'+index]);
-      this.context.bindTexture(context.TEXTURE_2D, texture.glTexture);
-    }
-
-    this.initTexture = function() {
-      this.texture = new Texture(this.context);
-      this.texture.init();
-    }
-
-    this.initShaders = function() {
-      this.shaderProgram = new ShaderProgram(this.context);
-      this.shaderProgram.init();
+      this.glContext.activeTexture(this.glContext['TEXTURE'+index]);
+      this.glContext.bindTexture(this.glContext.TEXTURE_2D, texture.glTexture);
     }
   }
   window.SIGL.Renderer = Renderer;
