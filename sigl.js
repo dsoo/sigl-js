@@ -102,6 +102,40 @@
       var shader = context.createShader(shader_type);
       this.glShader = shader;
 
+      // Parse uniforms out of the shader
+      var uniform_re = /^\s*uniform\s+(\S+)\s+(\S+);\s*$/;
+      var attribute_re = /^\s*attribute\s+(\S+)\s+(\S+);\s*$/;
+
+      lines = shader_text.split('\n');
+
+      var shader_uniforms = this.uniforms;
+      var shader_attributes = this.vertexAttributes;
+      lines.forEach(function(line) {
+        var match;
+
+        // Note: deliberate assignment in conditionals.
+        if (match = line.match(uniform_re)) {
+          // Set up this uniform
+          console.log('uniform', match);
+          var uniform_type = '';
+          switch (match[1]) {
+            case 'mat4':
+              uniform_type = 'Matrix4fv';
+              break;
+            case 'sampler2D':
+              uniform_type = '1i';
+              break;
+            default:
+              // FIXME: Generate an appropriate error
+          }
+          shader_uniforms[match[2]] = uniform_type;
+        } else if (match = line.match(attribute_re)) {
+          // Set up this attribute
+          shader_attributes.push(match[2]);
+        }
+      });
+
+      console.log(this.uniforms);
       context.shaderSource(shader, shader_text);
       context.compileShader(shader);
 
@@ -114,7 +148,7 @@
       var context = this.glContext;
       this.vertexAttributes.forEach(function(attribute) {
         program.enableVertexAttribute(attribute);
-      })
+      });
     }
 
     this.uniformSetup = function(program) {
@@ -139,47 +173,32 @@
     this.uniformTypes = {};
     this.uniforms = {};
 
-    this.init = function(url) {
+    this.initURLs = function(urls) {
       var program;
       var context = this.glContext;
+      var self = this;
       program = context.createProgram();
       this.glProgram = program;
 
+      var shaders = [];
+      urls.forEach(function(url) {
+        var shader = new Shader(context);
+        shader.initURL(url);
+        context.attachShader(program, shader.glShader);
+        shaders.push(shader);
+      });
 
-      var fragment_shader = new Shader(context);
-      fragment_shader.initURL("test.frag");
-      fragment_shader.uniforms = {
-        'uSampler': '1i'
-        };
-
-      var vertex_shader = new Shader(context);
-      vertex_shader.initURL("test.vert");
-      vertex_shader.vertexAttributes = ['aPosition', 'aTexCoord'];
-      vertex_shader.uniforms = {
-        'uMVMatrix': 'Matrix4fv',
-        'uPMatrix': 'Matrix4fv'
-        };
-
-
-      context.attachShader(program, vertex_shader.glShader);
-      context.attachShader(program, fragment_shader.glShader);
       context.linkProgram(program);
-
       if (!context.getProgramParameter(program, context.LINK_STATUS)) {
         alert("Could not initialise shaders");
       }
-
       context.useProgram(program);
-
-      // TODO:
-      // Shaders should be automatically parsed, and attributes should automatically be set up.
-      // Parse shader and automatically add attribute variables to
-      // And enable attribute arrays
-      // javascript program object.
-      vertex_shader.setupProgram(this);
-      fragment_shader.setupProgram(this);
-
+      shaders.forEach(function (shader) {
+        shader.setupProgram(self);
+      });
     }
+
+    // FIXME: Add ability to initialize using shader strings or preexisting shaders
 
     this.enableVertexAttribute = function(attribute) {
       var context = this.glContext;

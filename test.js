@@ -100,7 +100,7 @@ function initBuffers(renderer) {
 
 function initShaders(renderer) {
   shader_program = renderer.createShaderProgram();
-  shader_program.init();
+  shader_program.initURLs(['test.frag', 'test.vert']);
 }
 
 function initTexture(renderer) {
@@ -201,7 +201,7 @@ $(document).ready(function() {
     context.viewportHeight = canvas.height;
   } catch (e) {
   }
-  
+
   if (!context) {
     alert("Could not initialise WebGL, sorry :-(");
   }
