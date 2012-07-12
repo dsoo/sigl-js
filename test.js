@@ -1,3 +1,86 @@
+var Texture = function(context) {
+  this.glContext = context;
+  this.glTexture = context.createTexture();
+
+  this.init = function() {
+    var context = this.glContext;
+    var texture = this.glTexture;
+
+    var size = 8;
+    var pixels = new Uint8Array(size*size*4);
+    var i;
+    for (i = 0; i < size*size*4; ++i) {
+      if (0 == (i % 3)) {
+        pixels.set([255], i);
+      }
+    }
+
+    context.bindTexture(context.TEXTURE_2D, texture);
+    context.texImage2D(context.TEXTURE_2D, 0, context.RGBA, size, size, 0, context.RGBA, context.UNSIGNED_BYTE, pixels);
+    context.texParameteri(context.TEXTURE_2D, context.TEXTURE_MAG_FILTER, context.LINEAR);
+    context.texParameteri(context.TEXTURE_2D, context.TEXTURE_MIN_FILTER, context.LINEAR);
+    context.bindTexture(context.TEXTURE_2D, null);
+  }
+}
+
+var FragmentShader = function(context) {
+  this.glContext = context;
+  this.glFragShader = undefined;
+
+  this.init = function() {
+    this.glFragShader = getShader(this.glContext, "test.frag");
+
+  }
+}
+
+var ShaderProgram = function(context) {
+  this.glContext = context;
+  this.glProgram = undefined;
+
+  this.init = function() {
+    console.log('Initializing shaders');
+    var program;
+    var context = this.glContext;
+
+    var fragmentShader = getShader(context, "test.frag");
+    var vertexShader = getShader(context, "test.vert");
+
+    program = context.createProgram();
+    context.attachShader(program, vertexShader);
+    context.attachShader(program, fragmentShader);
+    context.linkProgram(program);
+
+    if (!context.getProgramParameter(program, context.LINK_STATUS)) {
+      alert("Could not initialise shaders");
+    }
+
+    context.useProgram(program);
+
+    // Todo
+    // Parse shader and automatically add attribute variables to
+    // javascript program object.
+
+    program.vertexPositionAttribute = context.getAttribLocation(program, "aVertexPosition");
+    context.enableVertexAttribArray(program.vertexPositionAttribute);
+
+    program.textureCoordAttribute = context.getAttribLocation(program, "aTextureCoord");
+    context.enableVertexAttribArray(program.textureCoordAttribute);
+
+    program.pMatrixUniform = context.getUniformLocation(program, "uPMatrix");
+    program.mvMatrixUniform = context.getUniformLocation(program, "uMVMatrix");
+    program.samplerUniform = context.getUniformLocation(program, "uSampler");
+
+    this.glProgram = program;
+  }
+
+  this.update = function(pMatrix, mvMatrix) {
+    var context = this.glContext;
+    context.uniform1i(this.glProgram.samplerUniform, 0);
+    context.uniformMatrix4fv(this.glProgram.pMatrixUniform, false, pMatrix);
+    context.uniformMatrix4fv(this.glProgram.mvMatrixUniform, false, mvMatrix);
+  }
+}
+
 var Renderer = function(context) {
   // Keep track of resources for you
   // The rendering context
@@ -9,53 +92,14 @@ var Renderer = function(context) {
   this.shaderProgram = undefined;
   this.texture = undefined;
 
-  this.initShaders = function() {
-    console.log('Initializing shaders');
-    var shaderProgram;
-    var context = this.context;
-
-    var fragmentShader = getShader(context, "test.frag");
-    var vertexShader = getShader(context, "test.vert");
-
-    shaderProgram = context.createProgram();
-    context.attachShader(shaderProgram, vertexShader);
-    context.attachShader(shaderProgram, fragmentShader);
-    context.linkProgram(shaderProgram);
-
-    if (!context.getProgramParameter(shaderProgram, context.LINK_STATUS)) {
-      alert("Could not initialise shaders");
-    }
-
-    context.useProgram(shaderProgram);
-
-    shaderProgram.vertexPositionAttribute = context.getAttribLocation(shaderProgram, "aVertexPosition");
-    context.enableVertexAttribArray(shaderProgram.vertexPositionAttribute);
-
-    shaderProgram.textureCoordAttribute = context.getAttribLocation(shaderProgram, "aTextureCoord");
-    context.enableVertexAttribArray(shaderProgram.textureCoordAttribute);
-
-    shaderProgram.pMatrixUniform = context.getUniformLocation(shaderProgram, "uPMatrix");
-    shaderProgram.mvMatrixUniform = context.getUniformLocation(shaderProgram, "uMVMatrix");
-    shaderProgram.samplerUniform = context.getUniformLocation(shaderProgram, "uSampler");
-    this.shaderProgram = shaderProgram;
+  this.initTexture = function() {
+    this.texture = new Texture(this.context);
+    this.texture.init();
   }
 
-  this.initTexture = function() {
-    this.texture = this.context.createTexture();
-    var size = 8;
-    var pixels = new Uint8Array(size*size*4);
-    var i;
-    for (i = 0; i < size*size*4; ++i) {
-      if (0 == (i % 3)) {
-        pixels.set([255], i);
-      }
-    }
-
-    context.bindTexture(context.TEXTURE_2D, this.texture);
-    context.texImage2D(context.TEXTURE_2D, 0, context.RGBA, size, size, 0, context.RGBA, context.UNSIGNED_BYTE, pixels);
-    context.texParameteri(context.TEXTURE_2D, context.TEXTURE_MAG_FILTER, context.LINEAR);
-    context.texParameteri(context.TEXTURE_2D, context.TEXTURE_MIN_FILTER, context.LINEAR);
-    context.bindTexture(context.TEXTURE_2D, null);
+  this.initShaders = function() {
+    this.shaderProgram = new ShaderProgram(this.context);
+    this.shaderProgram.init();
   }
 }
 
@@ -176,8 +220,7 @@ var zRot = 0;
 
 function drawScene(renderer) {
   var context = renderer.context;
-  var shaderProgram = renderer.shaderProgram;
-
+  var shader_program = renderer.shaderProgram;
 
   var mvMatrix = mat4.create();
   var pMatrix = mat4.create();
@@ -185,6 +228,22 @@ function drawScene(renderer) {
   context.viewport(0, 0, context.viewportWidth, context.viewportHeight);
   context.clear(context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT);
 
+
+  // Bind vertex attributes
+  context.bindBuffer(context.ARRAY_BUFFER, cubeVertexPositionBuffer);
+  context.vertexAttribPointer(shader_program.glProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, context.FLOAT, false, 0, 0);
+
+  context.bindBuffer(context.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
+  context.vertexAttribPointer(shader_program.glProgram.textureCoordAttribute, cubeVertexTextureCoordBuffer.itemSize, context.FLOAT, false, 0, 0);
+
+  // Set up texture
+  context.activeTexture(context.TEXTURE0);
+  context.bindTexture(context.TEXTURE_2D, renderer.texture.glTexture);
+
+  // Bind vertex data
+  context.bindBuffer(context.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
+
+  // Update shader parameters
   // Set up the perspective matrix
   mat4.perspective(45, context.viewportWidth / context.viewportHeight, 0.1, 100.0, pMatrix);
 
@@ -195,24 +254,7 @@ function drawScene(renderer) {
   mat4.rotate(mvMatrix, degToRad(yRot), [0, 1, 0]);
   mat4.rotate(mvMatrix, degToRad(zRot), [0, 0, 1]);
 
-  // Bind geometry data
-  context.bindBuffer(context.ARRAY_BUFFER, cubeVertexPositionBuffer);
-  context.vertexAttribPointer(shaderProgram.vertexPositionAttribute, cubeVertexPositionBuffer.itemSize, context.FLOAT, false, 0, 0);
-
-  context.bindBuffer(context.ARRAY_BUFFER, cubeVertexTextureCoordBuffer);
-  context.vertexAttribPointer(shaderProgram.textureCoordAttribute, cubeVertexTextureCoordBuffer.itemSize, context.FLOAT, false, 0, 0);
-
-  // Set up texture
-  context.activeTexture(context.TEXTURE0);
-  context.bindTexture(context.TEXTURE_2D, renderer.texture);
-  context.uniform1i(shaderProgram.samplerUniform, 0);
-
-  // Bind vertex data
-  context.bindBuffer(context.ELEMENT_ARRAY_BUFFER, cubeVertexIndexBuffer);
-
-  // Push matrix transforms into the shader
-  renderer.context.uniformMatrix4fv(renderer.shaderProgram.pMatrixUniform, false, pMatrix);
-  renderer.context.uniformMatrix4fv(renderer.shaderProgram.mvMatrixUniform, false, mvMatrix);
+  shader_program.update(pMatrix, mvMatrix);
 
   context.drawElements(context.TRIANGLES, cubeVertexIndexBuffer.numItems, context.UNSIGNED_SHORT, 0);
 }
@@ -249,6 +291,8 @@ $(document).ready(function() {
 
   // Initialize openGL
   var canvas = document.getElementById("webgl-canvas");
+  canvas.width = document.width;
+  canvas.height = document.height;
   var context = initGL(canvas);
   var renderer = new Renderer(context);
 
