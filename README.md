@@ -1,3 +1,1 @@
-Experiments with using signed distance fields to do rendering tricks in OpenGL.
-
-See http://www.valvesoftware.com/publications/2007/SIGGRAPH2007_AlphaTestedMagnification.pdf
+An attempt to build a layered, modular toolkit for WebGL rendering experimentation. Not even remotely ready for public consumption - use at your own risk!
