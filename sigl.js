@@ -4,24 +4,47 @@
   var Texture = function(context) {
     this.glContext = context;
     this.glTexture = context.createTexture();
+    this.width = 1;
+    this.height = 1;
+    this.pixels = undefined;
 
-    this.init = function() {
+    this.init = function(args) {
+      this.width = args.width;
+      this.height = args.height;
       var context = this.glContext;
       var texture = this.glTexture;
 
-      var size = 8;
-      var pixels = new Uint8Array(size*size*4);
-      var i;
-      for (i = 0; i < size*size*4; ++i) {
-        if (0 == (i % 3)) {
-          pixels.set([255], i);
-        }
-      }
+      // FIXME: The actual generation of raw texture data needs to be pulled out of
+      // this function, and provided as an input.
+      // There may need to be a separate concept of JS-native textures that works
+      // with this GL texture class.
+      var num_pixels = this.width*this.height;
+      this.pixels = new Uint8Array(num_pixels*4);
 
+      // Create a texture using the parameters specified. Assume for now that
+      // we're going to be using some sane defaults for texture parameter filtering.
+      // In the future, we will need to provide mechanisms for setting these
+      // parameters before/after instantiation.
       context.bindTexture(context.TEXTURE_2D, texture);
-      context.texImage2D(context.TEXTURE_2D, 0, context.RGBA, size, size, 0, context.RGBA, context.UNSIGNED_BYTE, pixels);
       context.texParameteri(context.TEXTURE_2D, context.TEXTURE_MAG_FILTER, context.LINEAR);
       context.texParameteri(context.TEXTURE_2D, context.TEXTURE_MIN_FILTER, context.LINEAR);
+      context.bindTexture(context.TEXTURE_2D, null);
+    }
+
+    this.mapPixels = function(map_func) {
+      var x,y;
+      for (y = 0; y < this.height; ++y) {
+        for (x = 0; x < this.width; ++x) {
+          var color = map_func(x, y);
+          this.pixels.set(color, (x + y*this.width)*4);
+        }
+      }
+      this.update()
+    }
+
+    this.update = function() {
+      context.bindTexture(context.TEXTURE_2D, this.glTexture);
+      context.texImage2D(context.TEXTURE_2D, 0, context.RGBA, this.width, this.height, 0, context.RGBA, context.UNSIGNED_BYTE, this.pixels);
       context.bindTexture(context.TEXTURE_2D, null);
     }
   }
@@ -116,14 +139,17 @@
         // Note: deliberate assignment in conditionals.
         if (match = line.match(uniform_re)) {
           // Set up this uniform
-          console.log('uniform', match);
           var uniform_type = '';
+          // FIXME: Handle this for all shader typesS
           switch (match[1]) {
             case 'mat4':
               uniform_type = 'Matrix4fv';
               break;
             case 'sampler2D':
               uniform_type = '1i';
+              break;
+            case 'float':
+              uniform_type = '1f';
               break;
             default:
               // FIXME: Generate an appropriate error
@@ -135,7 +161,6 @@
         }
       });
 
-      console.log(this.uniforms);
       context.shaderSource(shader, shader_text);
       context.compileShader(shader);
 
@@ -226,12 +251,14 @@
         // Do this based on the types of uniforms
         var uniform_type = this.uniformTypes[uniform];
         var func_name = 'uniform' + uniform_type;
-        //console.log(uniform, func_name, uniform_values[uniform])
+
         // FIXME: Understand the different uniform types
-        if (uniform_type === '1i') {
-          context[func_name](this.uniforms[uniform], uniform_values[uniform])
-        } else {
-          context[func_name](this.uniforms[uniform], false, uniform_values[uniform])
+        switch (uniform_type[0]) {
+          case '1':
+            context[func_name](this.uniforms[uniform], uniform_values[uniform]);
+            break;
+          default:
+            context[func_name](this.uniforms[uniform], false, uniform_values[uniform])
         }
       }
     }

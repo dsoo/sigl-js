@@ -1,3 +1,10 @@
+// This is a test implementation of a very simple WebGL example
+// originating from the original Khronos WebGL examples using SIGL.
+// The goal is to demonstrate that you can build straightforward
+// code for implementing simple rendering without the complexity of
+// dealing with GL-specific boilerplate.
+
+
 var vertex_position_buffer;
 var vertex_tex_coord_buffer;
 var vertex_index_buffer;
@@ -105,7 +112,14 @@ function initShaders(renderer) {
 
 function initTexture(renderer) {
   texture = renderer.createTexture();
-  texture.init();
+  texture.init({
+    width: 64,
+    height: 64
+  });
+  texture.mapPixels(function(x, y) {
+    var value = (1 + Math.sin(x + y))*255*0.5;
+    return [value, value, value, value];
+  });
 }
 
 function degToRad(degrees) {
@@ -149,7 +163,8 @@ function drawScene(renderer) {
   shader_program.updateUniforms({
     'uSampler': 0,
     'uMVMatrix': mvMatrix,
-    'uPMatrix': pMatrix
+    'uPMatrix': pMatrix,
+    'uThreshold': 0.5*(1+Math.sin(0.001*lastTime))
   })
 
   context.drawElements(context.TRIANGLES, vertex_index_buffer.glIndexBuffer.numItems, context.UNSIGNED_SHORT, 0);
@@ -175,15 +190,19 @@ function updateAndDraw(renderer) {
   animate();
 }
 
-function tick(renderer) {
+function tick(renderer, interval) {
   requestAnimFrame(function() {
-    //setTimeout(function() {
+    if (interval) {
+      setTimeout(function() {
+        tick(renderer);
+      }, 1000);
+    } else {
       tick(renderer);
-    //}, 1000);
+    }
   })
-  //console.log('drawing')
   updateAndDraw(renderer);
 }
+
 
 $(document).ready(function() {
   console.log("Ready!!!!")

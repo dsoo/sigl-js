@@ -2,6 +2,7 @@ precision mediump float;
 
 varying vec2 vTexCoord;
 
+uniform float uThreshold;
 uniform sampler2D uSampler;
 
 void main(void) {
@@ -11,9 +12,9 @@ void main(void) {
     vec4 clr;
 
     clr.rgba = vec4(1.0, 1.0, 0.0, 1.0);
-    if (mask < 0.4) {
+    if (mask < uThreshold) {
         clr.rgb = vec3(0.0, 0.0, 1.0);
-    } else if (mask < 0.6) {
+    } else if (mask < (uThreshold + 0.2)) {
         clr.rgb = vec3(0.0, 1.0, 0.0);
     } else {
         clr = texColor;
