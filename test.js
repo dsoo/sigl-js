@@ -209,15 +209,22 @@ $(document).ready(function() {
 
   // Initialize openGL
   var canvas = document.getElementById("webgl-canvas");
-  canvas.width = document.width;
-  canvas.height = document.height;
+
+
+  function resizeCanvas()
+  {
+    canvas.width = document.width;
+    canvas.height = document.height;
+    context.viewportWidth = canvas.width;
+    context.viewportHeight = canvas.height;
+  }
+  $(window).resize(resizeCanvas)
 
   var context;
 
   try {
-    context = canvas.getContext("experimental-webgl");
-    context.viewportWidth = canvas.width;
-    context.viewportHeight = canvas.height;
+    context = canvas.getContext("experimental-webgl", {alpha: true, preMultipliedAlpha: true, antialias: true});
+    resizeCanvas();
   } catch (e) {
   }
 
@@ -227,12 +234,12 @@ $(document).ready(function() {
 
 
   var renderer = new SIGL.Renderer(context);
+  context.clearColor(0.0, 0.0, 0.0, 0.0);
 
   initShaders(renderer);
   initBuffers(renderer);
   initTexture(renderer);
 
-  context.clearColor(0.0, 0.0, 0.0, 1.0);
   context.enable(context.DEPTH_TEST);
 
   tick(renderer);

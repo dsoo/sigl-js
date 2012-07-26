@@ -279,6 +279,7 @@
       var context = this.glContext;
       context.viewport(0, 0, context.viewportWidth, context.viewportHeight);
       context.clear(context.COLOR_BUFFER_BIT | context.DEPTH_BUFFER_BIT);
+      context.blendFunc(context.ONE, context.ONE_MINUS_SRC_ALPHA);
     }
 
     this.createVertexBuffer = function() {
