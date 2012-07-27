@@ -12,97 +12,14 @@ var shader_program;
 var texture;
 
 function initBuffers(renderer) {
-  vertices = [
-    // Front face
-    -1.0, -1.0,  1.0,
-     1.0, -1.0,  1.0,
-     1.0,  1.0,  1.0,
-    -1.0,  1.0,  1.0,
-
-    // Back face
-    -1.0, -1.0, -1.0,
-    -1.0,  1.0, -1.0,
-     1.0,  1.0, -1.0,
-     1.0, -1.0, -1.0,
-
-    // Top face
-    -1.0,  1.0, -1.0,
-    -1.0,  1.0,  1.0,
-     1.0,  1.0,  1.0,
-     1.0,  1.0, -1.0,
-
-    // Bottom face
-    -1.0, -1.0, -1.0,
-     1.0, -1.0, -1.0,
-     1.0, -1.0,  1.0,
-    -1.0, -1.0,  1.0,
-
-    // Right face
-     1.0, -1.0, -1.0,
-     1.0,  1.0, -1.0,
-     1.0,  1.0,  1.0,
-     1.0, -1.0,  1.0,
-
-    // Left face
-    -1.0, -1.0, -1.0,
-    -1.0, -1.0,  1.0,
-    -1.0,  1.0,  1.0,
-    -1.0,  1.0, -1.0,
-  ];
   vertex_position_buffer = renderer.createVertexBuffer();
-  vertex_position_buffer.init(vertices, 3);
+  vertex_position_buffer.initURL('test_verts.buf');
 
-  var tex_coords = [
-    // Front face
-    0.0, 0.0,
-    1.0, 0.0,
-    1.0, 1.0,
-    0.0, 1.0,
-
-    // Back face
-    1.0, 0.0,
-    1.0, 1.0,
-    0.0, 1.0,
-    0.0, 0.0,
-
-    // Top face
-    0.0, 1.0,
-    0.0, 0.0,
-    1.0, 0.0,
-    1.0, 1.0,
-
-    // Bottom face
-    1.0, 1.0,
-    0.0, 1.0,
-    0.0, 0.0,
-    1.0, 0.0,
-
-    // Right face
-    1.0, 0.0,
-    1.0, 1.0,
-    0.0, 1.0,
-    0.0, 0.0,
-
-    // Left face
-    0.0, 0.0,
-    1.0, 0.0,
-    1.0, 1.0,
-    0.0, 1.0,
-  ];
   vertex_tex_coord_buffer = renderer.createVertexBuffer();
-  vertex_tex_coord_buffer.init(tex_coords, 2);
+  vertex_tex_coord_buffer.initURL('test_tcs.buf');
 
-  var vertex_indices = [
-    0, 1, 2,      0, 2, 3,    // Front face
-    4, 5, 6,      4, 6, 7,    // Back face
-    8, 9, 10,     8, 10, 11,  // Top face
-    12, 13, 14,   12, 14, 15, // Bottom face
-    16, 17, 18,   16, 18, 19, // Right face
-    20, 21, 22,   20, 22, 23  // Left face
-  ];
   vertex_index_buffer = renderer.createVertexIndexBuffer();
-
-  vertex_index_buffer.init(vertex_indices, 1);
+  vertex_index_buffer.initURL('test_indices.buf');
 }
 
 function initShaders(renderer) {
@@ -121,6 +38,7 @@ function initTexture(renderer) {
     return [value, value, value, value];
   });
 }
+
 
 function degToRad(degrees) {
   return degrees * Math.PI / 180;
@@ -186,8 +104,8 @@ function animate() {
 }
 
 function updateAndDraw(renderer) {
-  drawScene(renderer);
   animate();
+  drawScene(renderer);
 }
 
 function tick(renderer, interval) {
@@ -205,11 +123,8 @@ function tick(renderer, interval) {
 
 
 $(document).ready(function() {
-  console.log("Ready!!!!")
-
   // Initialize openGL
   var canvas = document.getElementById("webgl-canvas");
-
 
   function resizeCanvas()
   {
@@ -231,7 +146,6 @@ $(document).ready(function() {
   if (!context) {
     alert("Could not initialise WebGL, sorry :-(");
   }
-
 
   var renderer = new SIGL.Renderer(context);
   context.clearColor(0.0, 0.0, 0.0, 0.0);

@@ -62,8 +62,30 @@
 
       // TODO: Validate buffer sizes;
       buffer.itemSize = stride;
-      buffer.numItems = vertices.length/stride;
+      buffer.numItems = data.length/stride;
       this.glBuffer = buffer;
+    }
+    
+    this.initURL = function(url) {
+      var data;
+      $.ajax({
+        url: url,
+        success: function(json) {
+          data = json;
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.log(arguments);
+        },
+        async: false,
+        dataType: 'json'
+      })
+
+      if (!data) {
+        console.log('No data!');
+        return null;
+      }
+
+      this.init(data.data, data.stride);
     }
   }
   window.SIGL.VertexBuffer = VertexBuffer;
@@ -81,6 +103,28 @@
       index_buffer.itemSize = stride;
       index_buffer.numItems = data.length/stride;
       this.glIndexBuffer = index_buffer;
+    }
+
+    this.initURL = function(url) {
+      var data;
+      $.ajax({
+        url: url,
+        success: function(json) {
+          data = json;
+        },
+        error: function(jqXHR, textStatus, errorThrown) {
+          console.log(arguments);
+        },
+        async: false,
+        dataType: 'json'
+      })
+
+      if (!data) {
+        console.log('No data!');
+        return null;
+      }
+
+      this.init(data.data, data.stride);
     }
   }
 
@@ -188,6 +232,7 @@
       this.uniformSetup(program);
     }
   }
+  window.SIGL.Shader = Shader;
 
   var ShaderProgram = function(context) {
     // FIXME: uniforms and vertex attributes should be in a member variable
